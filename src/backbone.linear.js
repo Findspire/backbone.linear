@@ -105,10 +105,27 @@ var flat = require("flat"), globalVar = typeof global !== "undefined" ? global :
           if (opts != null && opts.safe == null) {
             opts.safe = true;
           }
-          return flat.flatten(target, opts);
+          if (opts && opts.whitelist) {
+            return _.extend(_.omit(target, opts.whitelist), flat.flatten(_.pick(target, opts.whitelist), opts));
+          } else {
+            return flat.flatten(target, opts);
+          }
         },
 
-        unflatten: flat.unflatten
+        unflatten: function (target, opts) {
+          if (opts && opts.whitelist) {
+            var keys = [];
+            _.forEach(target, function(val, key) {
+                var root = key.split(opts.delimiter || '.')[0];
+                if (_.includes(opts.whitelist, root)) {
+                    keys.push(key);
+                }
+            });
+            return _.extend(_.omit(target, keys), flat.unflatten(_.pick(target, keys), opts));
+          } else {
+            return flat.unflatten(target, opts);
+          }
+        },
 
       });
 

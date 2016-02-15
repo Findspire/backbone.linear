@@ -26,6 +26,26 @@ describe("Backbone.Linear test api", function () { // eslint-disable-line
     }
   });
 
+  $.ajax.fake.registerWebservice("/fake_data/whitelist", function (data) {
+    if (data != null) {
+      return JSON.parse(data);
+    } else {
+      return {
+        Cats: {
+          Boris: {
+            age: 3,
+            weight: 4
+          },
+        },
+        Dogs: {
+          Milla: {
+            age: 1,
+            weight: 2
+          }
+        }
+      };
+    }
+  });
   $.ajax.fake.registerWebservice("/fake_data/safe", function (data) {
     if (data != null) {
       return JSON.parse(data);
@@ -329,6 +349,54 @@ describe("Backbone.Linear test api", function () { // eslint-disable-line
         chai.expect(attrs["Cats.Boris"].weight).equal(4);
         chai.expect(attrs["Cats.Milla"].age).equal(1);
         chai.expect(attrs["Cats.Milla"].weight).equal(2);
+        done();
+      }
+    });
+  });
+
+  it('flattens keys in whitelist only', function(done) {
+    this.linearModel.set("id", "whitelist");
+    this.linearModel.flatOptions = {whitelist: ["Cats"]};
+    this.linearModel.fetch({
+      fake: true,
+      wait: true,
+
+      success: function (model) {
+        var attrs = model.attributes;
+
+        chai.expect(attrs).have.property("Cats.Boris.age", 3);
+        chai.expect(attrs).have.property("Cats.Boris.weight", 4);
+        chai.expect(attrs).have.property("Dogs");
+        chai.expect(attrs["Dogs"]).have.property("Milla");
+        chai.expect(attrs["Dogs"]["Milla"]).have.property("age", 1);
+        chai.expect(attrs["Dogs"]["Milla"]).have.property("weight", 2);
+
+        done();
+      }
+    });
+  });
+
+  it('unflattens keys in whitelist only', function(done) {
+    this.linearModel.set({
+      "Cats.Boris.age": 3,
+      "Cats.Boris.weight": 4,
+      "Dogs": {
+        Milla: {
+          age: 1,
+          weight: 2
+        }
+      }
+    });
+    this.linearModel.flatOptions = {whitelist: ["Cats"]};
+    this.linearModel.save(null, {
+      fake: true,
+      wait: true,
+
+      success: function (model, mirrored) {
+        chai.expect(mirrored).have.deep.property("Cats.Boris.age", 3);
+        chai.expect(mirrored).have.deep.property("Cats.Boris.weight", 4);
+        chai.expect(mirrored.Dogs.Milla.age).equal(1);
+        chai.expect(mirrored.Dogs.Milla.weight).equal(2);
         done();
       }
     });
